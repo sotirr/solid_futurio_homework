@@ -1,3 +1,6 @@
+![workflow](https://github.com/sotirr/solid_futurio_homework/actions/workflows/codecow-workflow.yml/badge.svg)
+[![codecov](https://codecov.io/gh/sotirr/solid_futurio_homework/branch/main/graph/badge.svg?token=MFFSQUEQ74)](https://codecov.io/gh/sotirr/solid_futurio_homework)
+
 # Задание  
 
 В далекой звездной системе встретились две флотилии космических кораблей. Корабли могут передвигаться по всему пространству звездной системы по прямой, поворачиваться против и по часовой стрелке, стрелять фотонными торпедами. Попадание фотонной торпеды в корабль выводит его из строя.
