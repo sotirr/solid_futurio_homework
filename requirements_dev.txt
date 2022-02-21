@@ -1,0 +1,18 @@
+ipython
+pytest
+pytest-cov
+
+# flake8
+flake8
+flake8-bugbear
+flake8-builtins
+flake8-comprehensions
+flake8-eradicate
+flake8-commas
+flake8-broken-line
+flake8-debugger
+pylint
+pydocstyle
+
+# mypy
+mypy
