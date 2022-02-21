@@ -11,7 +11,7 @@ on:
 
 jobs:
   checks:
-    name: Codecov Workflow
+    name: Checks Workflow
     runs-on: ubuntu-latest
 
     steps:
