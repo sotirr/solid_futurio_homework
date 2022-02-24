@@ -1,8 +1,9 @@
 """Tests for server module."""
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
+from numpy.typing import NDArray
 from SpaceBattle.server.exceptions import NotMovableError, NotRotableError
 
 from SpaceBattle.server.commands import MoveCommand, RotateCommand
@@ -11,26 +12,26 @@ from SpaceBattle.server.commands import MoveCommand, RotateCommand
 class FakeMovableClass:
     """Fake movable class."""
 
-    def __init__(self, position: np.ndarray, move_velocity: np.ndarray) -> None:
+    def __init__(self, position: NDArray[np.float_], move_velocity: NDArray[np.float_]) -> None:
         """
         Init variabels.
 
         position - object's position on the map
         move_velocity - movement instantaneous speed
         """
-        self._move_velocity: np.ndarray = move_velocity
-        self._position: np.ndarray = position
+        self._move_velocity = move_velocity
+        self._position = position
         super().__init__()
 
-    def get_position(self) -> np.ndarray:
+    def get_position(self) -> NDArray[np.float_]:
         """Get current object's position on the map."""
         return self._position
 
-    def set_position(self, position: np.ndarray) -> None:
+    def set_position(self, position: NDArray[np.float_]) -> None:
         """Set new object's position."""
         self._position = position
 
-    def get_movement_velocity(self) -> np.ndarray:
+    def get_movement_velocity(self) -> NDArray[np.float_]:
         """Get object's movement velocity."""
         return self._move_velocity
 
@@ -65,7 +66,7 @@ class FakeRotableClass:
 class TestMoveCommand(TestCase):
     """Tests for the move command."""
 
-    def test_move(self):
+    def test_move(self) -> None:
         """
         Test move.
 
@@ -87,21 +88,21 @@ class TestMoveCommand(TestCase):
         )
 
     @patch('tests.test_server.test_server.FakeMovableClass.get_position', side_effect=AttributeError())
-    def test_trying_move_object_does_not_return_position(self, mock):
+    def test_trying_move_object_does_not_return_position(self, mock: MagicMock) -> None:
         """Check that move command reraise exception if object doesn't have get_position method."""
         movable_obj = FakeMovableClass(np.array((12, 5)), np.array((-7, 3)))
         with self.assertRaises(NotMovableError):
             MoveCommand(movable_obj).execute()
 
     @patch('tests.test_server.test_server.FakeMovableClass.get_movement_velocity', side_effect=AttributeError())
-    def test_trying_move_object_does_not_return_velocity(self, mock):
+    def test_trying_move_object_does_not_return_velocity(self, mock: MagicMock) -> None:
         """Check that move command reraise exception if object doesn't have get_movement_velocity method."""
         movable_obj = FakeMovableClass(np.array((12, 5)), np.array((-7, 3)))
         with self.assertRaises(NotMovableError):
             MoveCommand(movable_obj).execute()
 
     @patch('tests.test_server.test_server.FakeMovableClass.set_position', side_effect=AttributeError())
-    def test_trying_move_object_does_not_set_position(self, mock):
+    def test_trying_move_object_does_not_set_position(self, mock: MagicMock) -> None:
         """Check that move command reraise exception if object doesn't have set_position method."""
         movable_obj = FakeMovableClass(np.array((12, 5)), np.array((-7, 3)))
         with self.assertRaises(NotMovableError):
@@ -111,7 +112,7 @@ class TestMoveCommand(TestCase):
 class TestRotateCommand(TestCase):
     """Tests for the move command."""
 
-    def test_move(self):
+    def test_move(self) -> None:
         """
         Test rotate.
 
@@ -136,21 +137,21 @@ class TestRotateCommand(TestCase):
         )
 
     @patch('tests.test_server.test_server.FakeRotableClass.get_direction', side_effect=AttributeError())
-    def test_trying_move_object_does_not_return_direction(self, mock):
+    def test_trying_move_object_does_not_return_direction(self, mock: MagicMock) -> None:
         """Check that move command reraise exception if object doesn't have get_direction method."""
         rotable_obj = FakeRotableClass(45, 30)
         with self.assertRaises(NotRotableError):
             RotateCommand(rotable_obj, 'left').execute()
 
     @patch('tests.test_server.test_server.FakeRotableClass.get_rotation_velocity', side_effect=AttributeError())
-    def test_trying_move_object_does_not_return_rotation_velocity(self, mock):
+    def test_trying_move_object_does_not_return_rotation_velocity(self, mock: MagicMock) -> None:
         """Check that move command reraise exception if object doesn't have get_rotation_velocity method."""
         rotable_obj = FakeRotableClass(45, 30)
         with self.assertRaises(NotRotableError):
             RotateCommand(rotable_obj, 'left').execute()
 
     @patch('tests.test_server.test_server.FakeRotableClass.set_direction', side_effect=AttributeError())
-    def test_trying_move_object_does_not_set_direction(self, mock):
+    def test_trying_move_object_does_not_set_direction(self, mock: MagicMock) -> None:
         """Check that move command reraise exception if object doesn't have set_direction method."""
         rotable_obj = FakeRotableClass(45, 30)
         with self.assertRaises(NotRotableError):

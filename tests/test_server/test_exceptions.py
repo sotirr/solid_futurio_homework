@@ -8,7 +8,7 @@ from SpaceBattle.server.exceptions import Error, NotMovableError, NotRotableErro
 class BaseErrorTests(TestCase):
     """Tests for base error class."""
 
-    def test_raises(self):
+    def test_raises(self) -> None:
         """Test that raises."""
         with self.assertRaises(Error):
             raise Error
@@ -17,7 +17,7 @@ class BaseErrorTests(TestCase):
 class NotMovableErrorTests(TestCase):
     """Tests for NotMovableError class."""
 
-    def test_default_message(self):
+    def test_default_message(self) -> None:
         """Test exception default message."""
         err = NotMovableError()
         self.assertEqual(err.message, 'The object cannot be moved.')
@@ -26,7 +26,7 @@ class NotMovableErrorTests(TestCase):
 class NotRotableErrorTests(TestCase):
     """Tests for NotRotableError class."""
 
-    def test_default_message(self):
+    def test_default_message(self) -> None:
         """Test exception default message."""
         err = NotRotableError()
         self.assertEqual(err.message, 'The object cannot be rotated.')
