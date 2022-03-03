@@ -1,70 +1,26 @@
 """Tests for server module."""
+from collections import deque
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import Mock, create_autospec
 
 import numpy as np
 from numpy.typing import NDArray
+
 from SpaceBattle.server.exceptions import NotMovableError, NotRotableError
-
-from SpaceBattle.server.commands import MoveCommand, RotateCommand
-
-
-class FakeMovableClass:
-    """Fake movable class."""
-
-    def __init__(self, position: NDArray[np.float_], move_velocity: NDArray[np.float_]) -> None:
-        """
-        Init variabels.
-
-        position - object's position on the map
-        move_velocity - movement instantaneous speed
-        """
-        self._move_velocity = move_velocity
-        self._position = position
-        super().__init__()
-
-    def get_position(self) -> NDArray[np.float_]:
-        """Get current object's position on the map."""
-        return self._position
-
-    def set_position(self, position: NDArray[np.float_]) -> None:
-        """Set new object's position."""
-        self._position = position
-
-    def get_movement_velocity(self) -> NDArray[np.float_]:
-        """Get object's movement velocity."""
-        return self._move_velocity
-
-
-class FakeRotableClass:
-    """Fake rotable class."""
-
-    def __init__(self, direction: int, rotate_velocity: int) -> None:
-        """
-        Init variabels.
-
-        direction - corrent object's direction in degrees
-        rotate_velocity - object's rotate velocity in degrees
-        """
-        self._direction = direction
-        self._rotate_velocity = rotate_velocity
-        super().__init__()
-
-    def get_direction(self) -> int:
-        """Retrun object's current direction in degrees range from -360 to +360."""
-        return self._direction
-
-    def get_rotation_velocity(self) -> int:
-        """Retrun object rotation velocity in degrees range from -360 to +360."""
-        return self._rotate_velocity
-
-    def set_direction(self, direction: int) -> None:
-        """Set a new object's direction."""
-        self._direction = direction
+from SpaceBattle.server.commands import (
+    ChangeVelocityCommand, Command, DeleteVelocityCommand, EndMoveCommand, Movable,
+    MoveCommand, MoveCommandEndable, MoveCommandStartable, Rotable, RotateCommand,
+    StartMoveCommand, VelocityChangable, VelocityDeletable,
+)
 
 
 class TestMoveCommand(TestCase):
     """Tests for the move command."""
+
+    def setUp(self) -> None:
+        """Set up the test fixture before exercising it."""
+        self.fake_movable_obj = create_autospec(Movable, spec_set=True, instance=True)
+        return super().setUp()
 
     def test_move(self) -> None:
         """
@@ -73,46 +29,46 @@ class TestMoveCommand(TestCase):
         Для объекта, находящегося в точке (12, 5) и движущегося со скоростью (-7, 3)
         движение меняет положение объекта на (5, 8).
         """
-        test_fail_msg: str = """
-        The object has been moved to wrong position.
-        Wrong position: {}
-        Right position: {}
-        """
+        self.fake_movable_obj.get_position.return_value = np.array((12, 5))
+        self.fake_movable_obj.get_movement_velocity.return_value = np.array((-7, 3))
+        MoveCommand(self.fake_movable_obj).execute()
 
-        movable_obj = FakeMovableClass(np.array((12, 5)), np.array((-7, 3)))
-        MoveCommand(movable_obj).execute()
-
-        self.assertTrue(
-            np.array_equal(movable_obj.get_position(), np.array((5, 8))),
-            test_fail_msg.format(movable_obj.get_position(), np.array((5, 8)))
+        self.fake_movable_obj.set_position.assert_called_once()
+        new_position = self.fake_movable_obj.set_position.call_args.args[0]
+        expecting_position: NDArray[np.float_] = np.array((5, 8))
+        np.testing.assert_array_equal(
+            new_position, expecting_position,
+            err_msg='The object has been moved to wrong position.',
         )
 
-    @patch('tests.test_server.test_server.FakeMovableClass.get_position', side_effect=AttributeError())
-    def test_trying_move_object_does_not_return_position(self, mock: MagicMock) -> None:
-        """Check that move command reraise exception if object doesn't have get_position method."""
-        movable_obj = FakeMovableClass(np.array((12, 5)), np.array((-7, 3)))
+    def test_trying_move_object_does_not_return_position(self) -> None:
+        """Check that move command reraise exception if object raise exception in get_position method."""
+        self.fake_movable_obj.get_position.side_effect = Exception('Boom!')
         with self.assertRaises(NotMovableError):
-            MoveCommand(movable_obj).execute()
+            MoveCommand(self.fake_movable_obj).execute()
 
-    @patch('tests.test_server.test_server.FakeMovableClass.get_movement_velocity', side_effect=AttributeError())
-    def test_trying_move_object_does_not_return_velocity(self, mock: MagicMock) -> None:
-        """Check that move command reraise exception if object doesn't have get_movement_velocity method."""
-        movable_obj = FakeMovableClass(np.array((12, 5)), np.array((-7, 3)))
+    def test_trying_move_object_does_not_return_velocity(self) -> None:
+        """Check that move command reraise exception if object raise exception in get_movement_velocity method."""
+        self.fake_movable_obj.get_movement_velocity.side_effect = Exception('Boom!')
         with self.assertRaises(NotMovableError):
-            MoveCommand(movable_obj).execute()
+            MoveCommand(self.fake_movable_obj).execute()
 
-    @patch('tests.test_server.test_server.FakeMovableClass.set_position', side_effect=AttributeError())
-    def test_trying_move_object_does_not_set_position(self, mock: MagicMock) -> None:
-        """Check that move command reraise exception if object doesn't have set_position method."""
-        movable_obj = FakeMovableClass(np.array((12, 5)), np.array((-7, 3)))
+    def test_trying_move_object_does_not_set_position(self) -> None:
+        """Check that move command reraise exception if object raise exception in set_position method."""
+        self.fake_movable_obj.set_position.side_effect = Exception('Boom!')
         with self.assertRaises(NotMovableError):
-            MoveCommand(movable_obj).execute()
+            MoveCommand(self.fake_movable_obj).execute()
 
 
 class TestRotateCommand(TestCase):
     """Tests for the move command."""
 
-    def test_move(self) -> None:
+    def setUp(self) -> None:
+        """Set up the test fixture before exercising it."""
+        self.fake_rotable_obj = create_autospec(Rotable, spec_set=True, instance=True)
+        return super().setUp()
+
+    def test_left_rotate(self) -> None:
         """
         Test rotate.
 
@@ -126,33 +82,210 @@ class TestRotateCommand(TestCase):
         Wrong direction: {}
         Right direction: {}
         """
-        right_direction: int = 15
 
-        rotable_obj = FakeRotableClass(45, 30)
-        RotateCommand(rotable_obj, 'left').execute()
+        self.fake_rotable_obj.get_direction.return_value = 45
+        self.fake_rotable_obj.get_rotation_velocity.return_value = 30
+        RotateCommand(self.fake_rotable_obj, 'left').execute()
+
+        self.fake_rotable_obj.set_direction.assert_called_once()
+        new_direction = self.fake_rotable_obj.set_direction.call_args.args[0]
+        expect_direction: int = 15
 
         self.assertEqual(
-            rotable_obj.get_direction(), right_direction,
-            test_fail_msg.format(rotable_obj.get_direction(), right_direction)
+            new_direction, expect_direction,
+            test_fail_msg.format(new_direction, expect_direction),
         )
 
-    @patch('tests.test_server.test_server.FakeRotableClass.get_direction', side_effect=AttributeError())
-    def test_trying_move_object_does_not_return_direction(self, mock: MagicMock) -> None:
-        """Check that move command reraise exception if object doesn't have get_direction method."""
-        rotable_obj = FakeRotableClass(45, 30)
-        with self.assertRaises(NotRotableError):
-            RotateCommand(rotable_obj, 'left').execute()
+    def test_right_rotate(self) -> None:
+        """
+        Test rotate.
 
-    @patch('tests.test_server.test_server.FakeRotableClass.get_rotation_velocity', side_effect=AttributeError())
-    def test_trying_move_object_does_not_return_rotation_velocity(self, mock: MagicMock) -> None:
-        """Check that move command reraise exception if object doesn't have get_rotation_velocity method."""
-        rotable_obj = FakeRotableClass(45, 30)
-        with self.assertRaises(NotRotableError):
-            RotateCommand(rotable_obj, 'left').execute()
+        Для объекта c направление 45 градусов и поворачивающегося в право со скоростью 30 градусов
+        финальное направление будет 75 градусов.
 
-    @patch('tests.test_server.test_server.FakeRotableClass.set_direction', side_effect=AttributeError())
-    def test_trying_move_object_does_not_set_direction(self, mock: MagicMock) -> None:
-        """Check that move command reraise exception if object doesn't have set_direction method."""
-        rotable_obj = FakeRotableClass(45, 30)
+        Вектор направления можно будет высчитать позже через матрицу поворота в том месте где это будет необходимо.
+        """
+        test_fail_msg: str = """
+        The object has been rotated to wrong direction.
+        Wrong direction: {}
+        Right direction: {}
+        """
+
+        self.fake_rotable_obj.get_direction.return_value = 45
+        self.fake_rotable_obj.get_rotation_velocity.return_value = 30
+        RotateCommand(self.fake_rotable_obj, 'right').execute()
+
+        self.fake_rotable_obj.set_direction.assert_called_once()
+        new_direction = self.fake_rotable_obj.set_direction.call_args.args[0]
+        expect_direction: int = 75
+
+        self.assertEqual(
+            new_direction, expect_direction,
+            test_fail_msg.format(new_direction, expect_direction),
+        )
+
+    def test_trying_move_object_does_not_return_direction(self) -> None:
+        """Check that move command reraise exception if object raise exception in get_direction method."""
+        self.fake_rotable_obj.get_direction.side_effect = Exception('Boom!')
         with self.assertRaises(NotRotableError):
-            RotateCommand(rotable_obj, 'left').execute()
+            RotateCommand(self.fake_rotable_obj, 'left').execute()
+
+    def test_trying_move_object_does_not_return_rotation_velocity(self) -> None:
+        """Check that move command reraise exception if object raise exception in get_rotation_velocity method."""
+        self.fake_rotable_obj.get_rotation_velocity.side_effect = Exception('Boom!')
+        with self.assertRaises(NotRotableError):
+            RotateCommand(self.fake_rotable_obj, 'left').execute()
+
+    def test_trying_move_object_does_not_set_direction(self) -> None:
+        """Check that move command reraise exception if object raise exception in set_direction method."""
+        self.fake_rotable_obj.set_direction.side_effect = Exception('Boom!')
+        with self.assertRaises(NotRotableError):
+            RotateCommand(self.fake_rotable_obj, 'left').execute()
+
+
+class TestChangeVelocityCommand(TestCase):
+    """Tests for the ChangeVelocityCommand class."""
+
+    def setUp(self) -> None:
+        """Set up the test fixture before exercising it."""
+        self.fake_velocity_changable_obj = create_autospec(VelocityChangable, spec_set=True, instance=True)
+        return super().setUp()
+
+    def test_change_velocity(self) -> None:
+        """Check that command changed object's velocity."""
+        ChangeVelocityCommand(self.fake_velocity_changable_obj, 5).execute()
+
+        self.fake_velocity_changable_obj.set_velocity.assert_called_once()
+
+        velocity_new = self.fake_velocity_changable_obj.set_velocity.call_args.args[0]
+        velocity_expect = 5
+        self.assertEqual(velocity_new, velocity_expect)
+
+    def test_object_can_not_set_position(self) -> None:
+        """Check that command reraise exception if object raise exception in set_velocity method."""
+        self.fake_velocity_changable_obj.set_velocity.side_effect = Exception('Boom!')
+        with self.assertRaises(Exception):
+            MoveCommand(self.fake_velocity_changable_obj).execute()
+
+
+class TestDeleteVelocityCommand(TestCase):
+    """Tests for the DeleteVelocityCommand class."""
+
+    def setUp(self) -> None:
+        """Set up the test fixture before exercising it."""
+        self.fake_velocity_deletable_obj = create_autospec(VelocityDeletable, spec_set=True, instance=True)
+        return super().setUp()
+
+    def test_del_velocity(self) -> None:
+        """Check that command delete object's velocity."""
+        DeleteVelocityCommand(self.fake_velocity_deletable_obj).execute()
+
+        self.fake_velocity_deletable_obj.del_velocity.assert_called_once()
+
+    def test_object_can_not_del_velocity(self) -> None:
+        """Check that command reraise exception if object raise exception in set_velocity method."""
+        self.fake_velocity_deletable_obj.del_velocity.side_effect = Exception('Boom!')
+        with self.assertRaises(Exception):
+            DeleteVelocityCommand(self.fake_velocity_deletable_obj).execute()
+
+
+class TestStartMoveCommand(TestCase):
+    """Tests for StartMoveCommand class."""
+
+    def setUp(self) -> None:
+        """Set up the test fixture before exercising it."""
+        self.fake_order_obj = create_autospec(MoveCommandStartable, spec_set=True, instance=True)
+        self.fake_order_obj.get_target_object.return_value = Mock()
+        self.fake_order_obj.get_target_start_velocity.return_value = 5
+        self.fake_order_obj.get_target_command_queue.return_value = deque()
+        return super().setUp()
+
+    def test_add_command_to_queue(self) -> None:
+        """Checks that command was added to queue."""
+        StartMoveCommand(self.fake_order_obj).execute()
+
+        command_in_queue = self.fake_order_obj.get_target_command_queue().pop()
+
+        self.assertIsInstance(command_in_queue, Command)
+
+    def test_add_property_to_obj(self) -> None:
+        """Check that property was added to Object."""
+        StartMoveCommand(self.fake_order_obj).execute()
+
+        fake_object = self.fake_order_obj.get_target_object()
+
+        fake_object.set_value.assert_called_once()
+
+        property_set = fake_object.set_value.call_args.args
+        property_expecting = ('velocity', 5)
+
+        self.assertEqual(property_set, property_expecting, 'Order command set wrong property value to the object.')
+
+    def test_reraise_error_if_get_target_object_raise_error(self) -> None:
+        """Check that command reraise exception if object raise exception in get_target_object method."""
+        self.fake_order_obj.get_target_object.side_effect = Exception('Boom!')
+        with self.assertRaises(Exception):
+            StartMoveCommand(self.fake_order_obj).execute()
+
+    def test_reraise_error_if_get_target_start_velocity_raise_error(self) -> None:
+        """Check that command reraise exception if object raise exception in get_target_start_velocity method."""
+        self.fake_order_obj.get_target_start_velocity.side_effect = Exception('Boom!')
+        with self.assertRaises(Exception):
+            StartMoveCommand(self.fake_order_obj).execute()
+
+    def test_reraise_error_if_get_target_command_queue_raise_error(self) -> None:
+        """Check that command reraise exception if object raise exception in get_target_command_queue method."""
+        self.fake_order_obj.get_target_command_queue.side_effect = Exception('Boom!')
+        with self.assertRaises(Exception):
+            StartMoveCommand(self.fake_order_obj).execute()
+
+
+class TestEndMoveCommand(TestCase):
+    """Tests for EndMoveCommand class."""
+
+    def setUp(self) -> None:
+        """Set up the test fixture before exercising it."""
+        self.fake_order_obj = create_autospec(MoveCommandEndable, spec_set=True, instance=True)
+        target_command = Mock()
+        self.command_queue: deque[Mock] = deque()
+        self.command_queue.append(target_command)
+        self.fake_order_obj.get_target_moveing_object.return_value = Mock()
+        self.fake_order_obj.get_target_move_command.return_value = target_command
+        self.fake_order_obj.get_target_commands_queue.return_value = self.command_queue
+        return super().setUp()
+
+    def test_dell_command_from_queue(self) -> None:
+        """Checks that command was deleted from queue."""
+        EndMoveCommand(self.fake_order_obj).execute()
+        self.assertTrue(len(self.command_queue) == 0, "Command was not deleted from queue!")
+
+    def test_del_property_from_obj(self) -> None:
+        """Check that property was deleted from Object."""
+        EndMoveCommand(self.fake_order_obj).execute()
+
+        fake_object = self.fake_order_obj.get_target_moveing_object()
+
+        fake_object.del_value.assert_called_once()
+
+        property_send = fake_object.del_value.call_args.args
+        property_expecting = ('velocity',)
+
+        self.assertEqual(property_send, property_expecting, "Order command don't del property from the object.")
+
+    def test_reraise_error_if_get_target_moveing_object_raise_error(self) -> None:
+        """Check that command reraise exception if object raise exception in get_target_moveing_object method."""
+        self.fake_order_obj.get_target_moveing_object.side_effect = Exception('Boom!')
+        with self.assertRaises(Exception):
+            EndMoveCommand(self.fake_order_obj).execute()
+
+    def test_reraise_error_if_get_target_commands_queue_raise_error(self) -> None:
+        """Check that command reraise exception if object raise exception in get_target_commands_queue method."""
+        self.fake_order_obj.get_target_commands_queue.side_effect = Exception('Boom!')
+        with self.assertRaises(Exception):
+            EndMoveCommand(self.fake_order_obj).execute()
+
+    def test_reraise_error_if_get_target_move_command_raise_error(self) -> None:
+        """Check that command reraise exception if object raise exception in get_target_move_command method."""
+        self.fake_order_obj.get_target_move_command.side_effect = Exception('Boom!')
+        with self.assertRaises(Exception):
+            EndMoveCommand(self.fake_order_obj).execute()
