@@ -13,18 +13,18 @@ class UObject(Protocol):
     """Contract for any game objects."""
 
     @abstractmethod
-    def get_value(self, property: str) -> Any:
-        """Get object property's value."""
+    def get_value(self, characteristic: str) -> Any:
+        """Get object characteristic's value."""
         ...
 
     @abstractmethod
-    def set_value(self, property: str, value: Any) -> None:
-        """Set object property's value."""
+    def set_value(self, characteristic: str, value: Any) -> None:
+        """Set object characteristic's value."""
         ...
 
     @abstractmethod
-    def del_value(self, property: str) -> None:
-        """Del object property."""
+    def del_value(self, characteristic: str) -> None:
+        """Del object characteristic."""
         ...
 
 
@@ -99,7 +99,7 @@ class MoveCommand(Command):
         try:
             new_obj_position: NDArray[np.float_] = self.obj.get_position() + self.obj.get_movement_velocity()
             self.obj.set_position(new_obj_position)
-        except AttributeError as err:
+        except Exception as err:
             raise NotMovableError(f'The object cannot be moved. {err}')
 
 
@@ -143,7 +143,7 @@ class RotateCommand(Command):
             else:
                 new_rotation = self.obj.get_direction() + self.obj.get_rotation_velocity()
             self.obj.set_direction(new_rotation)
-        except AttributeError as err:
+        except Exception as err:
             raise NotRotableError(f'The object cannot be rotated. {err}')
 
 
@@ -358,7 +358,7 @@ class EndMoveCommand(Command):
         target_obj: UObject = self.order_to_end_move.get_target_moveing_object()
         DeleteVelocityCommand(
             VelocityDeletableAdapter(target_obj),
-        )
+        ).execute()
 
     def _del_command_from_target_queue(self) -> None:
         """
